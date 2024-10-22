@@ -1,0 +1,20 @@
+{
+  "name": "lddown",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "npx tsc",
+    "start": "npm run build && node dist/index.js"
+  },
+  "author": "Anton Venema",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "chalk": "4.1.2",
+    "commander": "^12.1.0",
+    "csv-stringify": "^6.5.1"
+  }
+}
