@@ -1,4 +1,4 @@
 dist
 node_modules
-flags.csv
-flags.json
+*.csv
+*.json

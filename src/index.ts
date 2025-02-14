@@ -30,6 +30,44 @@ const teams: { [tag: string]: string } = {
 
 const teamTags = new Set(Object.keys(teams));
 
+const getFlags = async () => {
+  let offset = 0;
+  const limit = 100;
+  const flags = [];
+  while (true) {
+    console.log(chalk.green(`Fetching up to ${limit} flags starting at offset ${offset}...`));
+    const response = await fetch(`https://app.launchdarkly.com/api/v2/flags/default?limit=${limit}&offset=${offset}`, {
+      headers: {
+        Authorization: options.apiKey,
+      },
+    });
+    const json = await response.json();
+    offset += json.items.length;
+    flags.push(...json.items);
+    if (offset >= json.totalCount) break;
+  }
+  return flags;
+};
+
+const getMembers = async () => {
+  let offset = 0;
+  const limit = 100;
+  const members = [];
+  while (true) {
+    console.log(chalk.green(`Fetching up to ${limit} members starting at offset ${offset}...`));
+    const response = await fetch(`https://app.launchdarkly.com/api/v2/members?limit=${limit}&offset=${offset}`, {
+      headers: {
+        Authorization: options.apiKey,
+      },
+    });
+    const json = await response.json();
+    offset += json.items.length;
+    members.push(...json.items);
+    if (offset >= json.totalCount) break;
+  }
+  return members;
+};
+
 const groupFlagsByTeam = (flags: any[]) => {
   const groups: { [key: string]: string[] } = {};
   for (const flag of flags) {
@@ -59,7 +97,7 @@ const groupFlagsByTeam = (flags: any[]) => {
   return groups;
 };
 
-const writeCSV = async (flags: any[]) => {
+const writeFlagsCSV = async (flags: any[], path: string) => {
   const csv = [[ "Maintainer", "Archived", "Deprecated", "Temporary", "Name", "Kind", "Key", "Created", "SDK", "Tags", "Description", ]];
   for (const flag of flags) {
     csv.push([
@@ -80,34 +118,22 @@ const writeCSV = async (flags: any[]) => {
     ]);
   }
 
-  const csvFilePath = path.join(process.cwd(), "flags.csv");
-  await fs.promises.writeFile(csvFilePath, stringify(csv));
-  console.log(chalk.green(`Wrote ${flags.length} flags to ${csvFilePath}.`));
+  await fs.promises.writeFile(path, stringify(csv));
 };
 
-const writeJSON = async (flags: any[]) => {
-  const jsonFilePath = path.join(process.cwd(), "flags.json");
-  await fs.promises.writeFile(jsonFilePath, JSON.stringify(flags, null, 2));
-  console.log(chalk.green(`Wrote ${flags.length} flags to ${jsonFilePath}.`));
+const writeJSON = async (data: any, path: string) => {
+  await fs.promises.writeFile(path, JSON.stringify(data, null, 2));
 };
 
 (async () => {
-  let offset = 0;
-  const limit = 100;
-  const flags = [];
-  while (true) {
-    console.log(chalk.green(`Fetching up to ${limit} flags starting at offset ${offset}...`));
-    const response = await fetch(`https://app.launchdarkly.com/api/v2/flags/default?limit=${limit}&offset=${offset}`, {
-      headers: {
-        Authorization: options.apiKey,
-      },
-    });
-    const json = await response.json();
-    offset += json.items.length;
-    flags.push(...json.items);
-    if (offset >= json.totalCount) break;
-  }
+  const members = await getMembers();
+  console.log(chalk.green(`Fetched ${members.length} members.`));
+  
+  const membersPathJson = path.join(process.cwd(), "members.json");
+  await writeJSON(members, membersPathJson);
+  console.log(chalk.green(`Wrote ${members.length} members to ${membersPathJson}.`));
 
+  const flags = await getFlags();
   console.log(chalk.green(`Fetched ${flags.length} flags.`));
 
   const groups = groupFlagsByTeam(flags);
@@ -115,6 +141,11 @@ const writeJSON = async (flags: any[]) => {
     console.log(`${teams[teamTag]}: ${groups[teamTag]?.length ?? 0}`);
   }
 
-  await writeJSON(flags);
-  await writeCSV(flags);
+  const flagsPathJson = path.join(process.cwd(), "flags.json");
+  await writeJSON(flags, flagsPathJson);
+  console.log(chalk.green(`Wrote ${flags.length} flags to ${flagsPathJson}.`));
+
+  const flagsPathCsv = path.join(process.cwd(), "flags.csv");
+  await writeFlagsCSV(flags, flagsPathCsv);
+  console.log(chalk.green(`Wrote ${flags.length} flags to ${flagsPathCsv}.`));
 })();
